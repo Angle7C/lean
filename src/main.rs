@@ -1,10 +1,10 @@
-mod lib;
+mod RayTrack;
 fn main(){
     
 }
 #[cfg(test)]
 mod  test{
-    use lib::vec4;
+    use crate::RayTrack::vec4;
     #[test]
     fn render_back(){
      const aspect_radio  : f64 = 16.0/9.0;
