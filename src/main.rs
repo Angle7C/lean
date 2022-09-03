@@ -1,46 +1,63 @@
-mod Object;
-mod Raytrack;
-use Object::sphere::Sphere;
+mod object;
+mod raytrack;
 fn main() {}
 #[cfg(test)]
 mod test {
-    use crate::Object::sphere::Sphere;
-    use crate::Raytrack::ray::Ray;
-    use crate::Raytrack::vec3::Vec3;
-    use crate::Raytrack::hit_record::{Hittable, HittableList};
+    use crate::object::plane::Plane;
+    use crate::object::sphere::Sphere;
+    use crate::raytrack::bvh::BVHNode;
+    use crate::raytrack::camera::Camera;
+    use crate::raytrack::hit_record::Hittable;
+    use crate::raytrack::vec3::Vec3;
+    use rand::Rng;
+
+    fn init() {
+        log4rs::init_file("log.yaml", Default::default()).unwrap();
+    }
     #[test]
     fn draw_sphere() {
-        let a=Sphere::new(Vec3::new(0.0, 100.0, -1.0), 99.5);
-        let b=Sphere::new(Vec3::new(0.0,0.0,  -1.0), 0.5);
-        let mut world=HittableList::new();
-        world.add(Box::new(b));
-
-        world.add(Box::new(a));
-
-        let width = 800;
-        let height = 800;
-        let mut image = image::RgbaImage::new(width, height);
-        for (_,_,item) in image.enumerate_pixels_mut(){
-            *item=image::Rgba([127,127,127,255])
-        }
-
-        // return ;
-        let lower_left_corner=Vec3::new(-4.0, -2.0, -1.0);
-        let horizontal=Vec3::new(8.0, 0.0, 0.0);
-        let vertical=Vec3::new(0.0, 4.0, 0.0);
-        let origin=Vec3::new(0.0, 0.0, 0.0);
+        init();
+        let ssp = 10.0;
+        let s1 = Sphere::new(Vec3::new(0.0, 100.0, 0.0), 97.0);
+        let s2 = Sphere::new(Vec3::new(0.0, 0.0, 0.0), 3.0);
+        let p1 = Plane::new(
+            Vec3::new(-100.0, -100.0, 0.0),
+            Vec3::new(100.0, 100.0, 0.0),
+            Vec3::new(100.0, -100.0, 0.0),
+            Vec3::new(-100.0, 100.0, 0.0),
+            Vec3::new(0.0, 0.0, -1.0),
+            true,
+        );
+        let mut list: Vec<Box<dyn Hittable>> = vec![];
+        list.push(Box::new(s1));
+        list.push(Box::new(s2));
+        list.push(Box::new(p1));
+        let bvh_tree = BVHNode::new(list);
+        let width = 400;
+        let height = 400;
+        let mut image = image::RgbImage::new(width, height);
+        let mut rand = rand::thread_rng();
+        let camera = Camera::new(
+            Vec3::new(0.0, 0.0, -15.0),
+            Vec3::new(0.0, 0.0, 1.0),
+            Vec3::new(0.0, 1.0, 0.0),
+            90.0,
+            1.0,
+        );
         for i in 0..width {
             for j in 0..height {
-                let u = i as f64 / (width-1) as f64;
-                let v = j as f64 / (height-1) as f64;
-                let  r= Ray::new(origin, lower_left_corner + horizontal*u + vertical*v-origin);
+                let mut sum = Vec3::new(0.0, 0.0, 0.0);
                 let pixel = image.get_pixel_mut(i, j);
-                for i in 0..100{
-                    *pixel=r.ray_color(&world).rgba();
+                for _i in 0..ssp as i32 {
+                    let u = (i as f64 + rand.gen::<f64>()) / (width) as f64;
+                    let v = (j as f64 + rand.gen::<f64>()) / (height) as f64;
+                    let ray = camera.getRay(u, v);
+                    let color = ray.path_color(bvh_tree.hit(&ray, 0.0000, 10000.0), &bvh_tree, 10);
+                    sum = sum + color;
                 }
+                *pixel = sum.rgba(ssp);
             }
         }
         image.save("sphere_test.png").unwrap();
-
     }
 }

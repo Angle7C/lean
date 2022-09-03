@@ -7,5 +7,8 @@ edition = "2021"
 
 [dependencies]
 wavefront_obj = "10.0.0"
+nalgebra = "0.31.1"
 image = "0.24.3"
 rand = "0.8.5"
+log="0.4"
+log4rs = "0.11.0"

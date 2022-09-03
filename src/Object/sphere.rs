@@ -1,18 +1,18 @@
 use std::f64::consts::PI;
 use rand::Rng;
-
-use crate::Raytrack::ray::Ray;
-use crate::Raytrack::hit_record::HitRecord;
-use crate::Raytrack::vec3::Vec3;
-use crate::Raytrack::hit_record::Hittable;
-
+use crate::object::traitable::Object;
+use crate::raytrack::ray::Ray;
+use crate::raytrack::hit_record::HitRecord;
+use crate::raytrack::vec3::{Vec3};
+use crate::raytrack::hit_record::Hittable;
+use crate::raytrack::aabb::AABB;
+#[derive(Debug)]
 pub struct Sphere{
     pub center :Vec3,
     pub radius :f64,
+    pub light:bool,
 }
-
-impl Hittable for Sphere{
-   
+impl Hittable for Sphere{   
     fn hit(&self,r :&Ray,t_min :f64, t_max:f64)->Option<HitRecord> {
         let oc=r.orig-self.center;
         let a=1 as f64;
@@ -29,14 +29,14 @@ impl Hittable for Sphere{
                         None
                     }else{
                         let p=r.at(t);
-                        let mut rec=HitRecord::new((p-self.center).normalized(), p,t,false);
+                        let mut rec=HitRecord::new((p-self.center).normalized(), p,t,false,self.light);
                         rec.set_face_norm(&r);
                         Some(rec)
                         
                     }
                 }else{
                     let p=r.at(t);
-                    let mut rec=HitRecord::new((p-self.center).normalized(), p,t,false);
+                    let mut rec=HitRecord::new((p-self.center).normalized(), p,t,false,self.light);
                     rec.set_face_norm(&r);
                     Some(rec)
 
@@ -47,6 +47,12 @@ impl Hittable for Sphere{
         }
         
     }
+    fn boundBox(&self)->Option<AABB> {
+        let min=self.center-Vec3::new(self.radius,self.radius,self.radius);
+        let max=self.center+Vec3::new(self.radius,self.radius,self.radius);
+        Some(AABB::new(min, max))
+    }
+
 }
 impl Sphere{
     pub fn rand_unit_sphere()->Vec3{
@@ -55,13 +61,20 @@ impl Sphere{
         let cos_beta =rand.gen_range(-1.0..1.0);
         let sin_beta=(1.0-cos_beta*cos_beta) as f32;
         let sin_beta=sin_beta.sqrt() as f64;
-        return Vec3 { x: sin_beta*alpha.cos(), y: sin_beta*alpha.sin(), z: sin_beta }
-
+        Vec3 { x: sin_beta*alpha.cos(), y: sin_beta*alpha.sin(), z: sin_beta }
     }
     pub fn new(center :Vec3,radius :f64)->Self{
         Sphere{
             center:(center),
-            radius:(radius)
+            radius:(radius),
+            light:false
+        }
+    }
+    pub fn new_light(center :Vec3,radius :f64)->Self{
+        Sphere{
+            center:(center),
+            radius:(radius),
+            light:true
         }
     }
 }
