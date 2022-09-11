@@ -1,37 +1,67 @@
+use std::f32::consts::PI;
 
-use super::{vec3::{self, Vec3}, hit_record::{ Hittable}};
-use crate::raytrack::hit_record::HitRecord;
-use crate::object::sphere::Sphere;
-pub struct Ray{
-    pub orig:vec3::Point3,
-    pub dir :vec3::Vec3,
+use nalgebra::{Point3, Vector3};
+use rand::Rng;
+
+use crate::object::object::ModelData;
+
+use super::boundbox::HitRecord;
+#[derive(Debug)]
+pub struct Ray {
+    pub origin: Vector3<f32>,
+    pub direction: Vector3<f32>,
 }
-impl Ray{
-    pub fn new(origin :vec3::Point3,direction:vec3::Vec3)->Ray{
-        Ray { orig: (origin), dir: (direction.normalized()) }
-    }
-    pub fn at(&self,t :f64)->Vec3{
-        self.orig+self.dir*t
-    }
-    pub fn path_color(&self,rec :Option<HitRecord>,bvh :&Box<dyn Hittable>,dep :i32)->Vec3{
-        if dep<=0 {
-            return Vec3::zero()
-        }
-        if let Some(v)=rec{
-                let s=v.p+v.normal+Sphere::rand_unit_sphere();
-                let r = Ray::new(v.p, v.p-s);
-                match bvh.hit(&r, 0.0000, 10000.0){
-                    Some(v)=> r.path_color(Some(v), bvh,dep-1),
-                    None=>{
-                        let t=0.5*(r.dir.y+1.0);
-                        Vec3::new(0.78, 1.0, 1.0)*(1.0-t)+Vec3::new(0.4, 0.7, 1.0)*t
-                    }
-                }
-        }
-        else{
-            let t=0.5*(self.dir.y+1.0);
-            Vec3::new(0.78, 1.0, 1.0)*(1.0-t)+Vec3::new(0.4, 0.7, 1.0)*t
+impl Ray {
+    #[inline]
+    fn unit_rand(normal: &Vector3<f32>) -> Vector3<f32> {
+        let mut rang = rand::thread_rng();
+        let b = rang.gen_range(0.0..2.0 * PI);
+        let cos_a = rang.gen_range(0.0..1.0);
+        let sin_a = f32::sqrt(1.0 - cos_a * cos_a);
+        let v = Vector3::<f32>::new(sin_a * b.cos(), sin_a * b.sin(), cos_a);
+        if v.dot(&normal) > 0.0 {
+            return v;
+        } else {
+            return -v;
         }
     }
-   
+    pub fn new(o: Vector3<f32>, dir: Vector3<f32>) -> Self {
+        Self {
+            origin: (o),
+            direction: (dir.normalize()),
+        }
+    }
+    #[allow(dead_code)]
+    pub fn at(&self, t: f32) -> Vector3<f32> {
+        self.origin + self.direction * t
+    }
+    pub fn ray_color(
+        &self,
+        model: &ModelData,
+        t_min: f32,
+        t_max: f32,
+        rec: Option<HitRecord>,
+        dep: i32,
+    ) -> Vector3<f32> {
+        if dep <= 0 {
+            return Vector3::<f32>::zeros();
+        }
+        match rec {
+            Some(v) => {
+                let t = Self::unit_rand(&v.normal);
+                
+                let ray = Ray::new(v.p, t);
+                
+                let hit = model.hit(&ray, t_min, t_max);
+                // let t=(-ray.direction).dot(&v.normal);
+                ray.ray_color(&model, t_min, t_max, hit, dep-1)
+            }
+            None => {
+                let t = 0.5 * (self.direction.y + 1.0);
+                Vector3::<f32>::new(1.0, 1.0, 1.0) * (1.0 - t)
+                    + Vector3::<f32>::new(0.4, 0.7, 1.0) * t
+            }
+        }
+        // todo!();
+    }
 }
