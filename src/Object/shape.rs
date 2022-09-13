@@ -118,8 +118,10 @@ impl Squart {
         let b=p12.cross(&p1p);
         let c=p23.cross(&p2p);
         let d=p30.cross(&p3p);
-        if (a.z<0.0&&b.z<0.0&&c.z<0.0&&d.z<0.0)||(a.z>0.0&&b.z>0.0&&c.z>0.0&&d.z>0.0){
-            Some(HitRecord::new(self.normal[0],p,t))
+        if (a.y<0.0&&b.y<0.0&&c.y<0.0&&d.y<0.0)||(a.y>0.0&&b.y>0.0&&c.y>0.0&&d.y>0.0){
+            let mut rec=HitRecord::new(((self.normal[0]+self.normal[1]+self.normal[2]+self.normal[3])/4.0).normalize(),p,t);
+            rec.set_normal(ray);
+            Some(rec)
         }else{
             None
         }

@@ -1,6 +1,6 @@
 use crate::object::{object::ModelData, shape::{Triangle, Squart}};
 use image::math;
-use nalgebra::{Point3};
+use nalgebra::{Point3, Vector3};
 use obj::IndexTuple;
 use crate::raytrack::ray::Ray;
 use super::boundbox::{ AABB, HitRecord};
@@ -24,10 +24,10 @@ impl BVHNode {
     }
     #[allow(unused)]
     fn build(mut info: Vec<GeomInfo>)->Self {
-
+        
         const  n :usize= 4;
-        let mut min = Point3::<f32>::new(f32::INFINITY, f32::INFINITY, f32::INFINITY);
-        let mut max = Point3::<f32>::new(-f32::INFINITY, -f32::INFINITY, -f32::INFINITY);
+        let mut min = Vector3::<f32>::new(f32::INFINITY, f32::INFINITY, f32::INFINITY);
+        let mut max = Vector3::<f32>::new(-f32::INFINITY, -f32::INFINITY, -f32::INFINITY);
         info.iter().for_each(|a| {
             min.x = min.x.min(a.center.x);
             min.y = min.y.min(a.center.y);
@@ -56,80 +56,87 @@ impl BVHNode {
                 bound_box:bound,
                 next:Child::Node(Box::new(left), Box::new(right)),
             }
-        }
-        let det = max - min;
-        let area_s = det.x * det.y * 2.0 + det.x * det.z * 2.0 + det.y * det.z * 2.0;
-        let mut index = 0;
-        match det.argmax() {
-            (0, v) => {
-                unsafe {
-                    D = v / n as f32;
-                };
-                index = 0;
-                info.sort_by(|a, b| a.center.x.partial_cmp(&b.center.x).unwrap())
-            }
-            (1, v) => {
-                unsafe {
-                    D = v / n as f32;
-                };
-                index = 1;
-                info.sort_by(|a, b| a.center.y.partial_cmp(&b.center.y).unwrap())
-            }
-            (2, v) => {
-                unsafe {
-                    D = v / n as f32;
-                };
-                index = 2;
-                info.sort_by(|a, b| a.center.z.partial_cmp(&b.center.z).unwrap())
-            }
-            (_, _) => {
-                panic!("this axis is None")
-            }
         };
-        let mut bounck: [AABB; n] = [AABB::zero(); n];
-        //初始化bounck
-        
-        info.iter().for_each(|x| {
-
-            let i =unsafe {
-                let mut t=((x.center[index] - min[index]-0.001)/D) as usize;
-                // if t>=n{
-                //     t=n-1;
-                // }
-                t
-            };
-            // println!("i: {}",i);
-            bounck[i] = AABB::new(x.center, x.center);
-        });
-        let mut left = AABB::new(info.first().unwrap().center, info.first().unwrap().center);
-        let mut right = AABB::new(info.last().unwrap().center, info.last().unwrap().center);
-        let mut l = 0.0;
-        let mut r = 0.0;
-        let mut min_value = f32::INFINITY;
-        let mut spilt_n=0;
-        for i in 0..n {
-            for item in info.iter() {
-                if unsafe { item.center[index] < min.x + i as f32 * D / n as f32 } {
-                    left = left.merge(&item.bound);
-                    l += 1.0;
-                } else {
-                    right = right.merge(&item.bound);
-                    r += 1.0;
-                }
-            }
-            if min_value > 10.0 + left.area() / area_s * l + right.area() / area_s * r {
-                min_value = 10.0 + left.area() / area_s * l*10.0 + right.area() / area_s * r*10.0; 
-                               spilt_n = i;
-            }
-        }
-        let len=info.len()*spilt_n/n;
-        let (l_node, r_node) = info.split_at(len);
-        let left=Self::build( l_node.into());
-        let right=Self::build(r_node.into());
-        return Self{
+        let (l,r)=info.split_at(info.len()/2);
+        let left=Self::build(l.to_vec().into());
+        let right =Self::build(r.to_vec().into());
+         return Self{
             bound_box:bound,
             next:Child::Node(Box::new(left), Box::new(right)),
         }
+        // let det = max - min;
+        // let area_s = det.x * det.y * 2.0 + det.x * det.z * 2.0 + det.y * det.z * 2.0;
+        // let mut index = 0;
+        // match det.argmax() {
+        //     (0, v) => {
+        //         unsafe {
+        //             D = v / n as f32;
+        //         };
+        //         index = 0;
+        //         info.sort_by(|a, b| a.center.x.partial_cmp(&b.center.x).unwrap())
+        //     }
+        //     (1, v) => {
+        //         unsafe {
+        //             D = v / n as f32;
+        //         };
+        //         index = 1;
+        //         info.sort_by(|a, b| a.center.y.partial_cmp(&b.center.y).unwrap())
+        //     }
+        //     (2, v) => {
+        //         unsafe {
+        //             D = v / n as f32;
+        //         };
+        //         index = 2;
+        //         info.sort_by(|a, b| a.center.z.partial_cmp(&b.center.z).unwrap())
+        //     }
+        //     (_, _) => {
+        //         panic!("this axis is None")
+        //     }
+        // };
+        // let mut bounck: [AABB; n] = [AABB::zero(); n];
+        // //初始化bounck
+        
+        // info.iter().for_each(|x| {
+
+        //     let i =unsafe {
+        //         let mut t=((x.center[index] - min[index]-0.001)/D) as usize;
+        //         // if t>=n{
+        //         //     t=n-1;
+        //         // }
+        //         t
+        //     };
+        //     // println!("i: {}",i);
+        //     bounck[i] = AABB::new(x.center, x.center);
+        // });
+        // let mut left = AABB::new(info.first().unwrap().center, info.first().unwrap().center);
+        // let mut right = AABB::new(info.last().unwrap().center, info.last().unwrap().center);
+        // let mut l = 0.0;
+        // let mut r = 0.0;
+        // let mut min_value = f32::INFINITY;
+        // let mut spilt_n=0;
+        // for i in 0..n {
+        //     for item in info.iter() {
+        //         if unsafe { item.center[index] < min.x + i as f32 * D / n as f32 } {
+        //             left = left.merge(&item.bound);
+        //             l += 1.0;
+        //         } else {
+        //             right = right.merge(&item.bound);
+        //             r += 1.0;
+        //         }
+        //     }
+        //     if min_value > 10.0 + left.area() / area_s * l + right.area() / area_s * r {
+        //         min_value = 10.0 + left.area() / area_s * l*10.0 + right.area() / area_s * r*10.0; 
+        //                        spilt_n = i;
+        //     }
+        // }
+        // let len=info.len()*spilt_n/n;
+        // let (l_node, r_node) = info.split_at(len);
+        // let left=Self::build( l_node.into());
+        // let right=Self::build(r_node.into());
+        // return Self{
+        //     bound_box:bound,
+        //     next:Child::Node(Box::new(left), Box::new(right)),
+        // }
     }
     #[allow(unused)]
     pub fn hit(&self,ray:&Ray,model :&ModelData, t_min:f32,t_max:f32)->Option<HitRecord>{
@@ -230,12 +237,12 @@ impl GeomInfo {
             pa[1] + pb[1] + pc[1],
             pa[1] + pb[1] + pc[1],
         ) / 3.0;
-        let min = Point3::<f32>::new(
+        let min = Vector3::<f32>::new(
             pa[0].min(pb[0]).min(pc[0]),
             pa[1].min(pb[1]).min(pc[1]),
             pa[2].min(pb[2]).min(pc[2]),
         );
-        let max = Point3::<f32>::new(
+        let max = Vector3::<f32>::new(
             pa[0].max(pb[0]).max(pc[0]),
             pa[1].max(pb[1]).max(pc[1]),
             pa[2].max(pb[2]).max(pc[2]),
@@ -254,12 +261,12 @@ impl GeomInfo {
             pa[1] + pb[1] + pc[1]+pd[0],
             pa[1] + pb[1] + pc[1]+pd[0],
         ) / 4.0;
-        let min = Point3::<f32>::new(
+        let min = Vector3::<f32>::new(
             pa[0].min(pb[0]).min(pc[0]).min(pd[0]),
             pa[1].min(pb[1]).min(pc[1]).min(pd[1]),
             pa[2].min(pb[2]).min(pc[2]).min(pd[2]),
         );
-        let max = Point3::<f32>::new(
+        let max = Vector3::<f32>::new(
             pa[0].max(pb[0]).max(pc[0]).max(pd[0]),
             pa[1].max(pb[1]).max(pc[1]).max(pd[1]),
             pa[2].max(pb[2]).max(pc[2]).max(pd[2]),

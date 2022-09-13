@@ -16,7 +16,7 @@ impl Ray {
     fn unit_rand(normal: &Vector3<f32>) -> Vector3<f32> {
         let mut rang = rand::thread_rng();
         let b = rang.gen_range(0.0..2.0 * PI);
-        let cos_a = rang.gen_range(0.0..1.0);
+        let cos_a = rang.gen_range(-1.0..1.0);
         let sin_a = f32::sqrt(1.0 - cos_a * cos_a);
         let v = Vector3::<f32>::new(sin_a * b.cos(), sin_a * b.sin(), cos_a);
         if v.dot(&normal) > 0.0 {
@@ -41,27 +41,23 @@ impl Ray {
         t_min: f32,
         t_max: f32,
         rec: Option<HitRecord>,
-        dep: i32,
     ) -> Vector3<f32> {
-        if dep <= 0 {
+        if rand::thread_rng().gen_bool(0.1) {
             return Vector3::<f32>::zeros();
         }
         match rec {
             Some(v) => {
-                let t = Self::unit_rand(&v.normal);
-                
+                let t = v.normal + Self::unit_rand(&v.normal);
                 let ray = Ray::new(v.p, t);
-                
                 let hit = model.hit(&ray, t_min, t_max);
-                // let t=(-ray.direction).dot(&v.normal);
-                ray.ray_color(&model, t_min, t_max, hit, dep-1)
+                let cos = v.normal.dot(&self.direction);
+                ray.ray_color(&model, t_min, t_max, hit)*0.5 /0.9
             }
             None => {
                 let t = 0.5 * (self.direction.y + 1.0);
-                Vector3::<f32>::new(1.0, 1.0, 1.0) * (1.0 - t)
-                    + Vector3::<f32>::new(0.4, 0.7, 1.0) * t
+                Vector3::<f32>::new(1.0, 1.0, 1.0) * (1.0 - t)/0.9
+                    + Vector3::<f32>::new(0.4, 0.7, 1.0) * t/0.9
             }
         }
-        // todo!();
     }
 }

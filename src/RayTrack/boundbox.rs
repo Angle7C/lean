@@ -4,8 +4,8 @@ use nalgebra::{Vector3,Point3, Point};
 use super::ray::Ray;
 #[derive(Debug,Clone, Copy)]
 pub struct AABB{
-    pub min :Point3<f32>,
-    pub max :Point3<f32>,
+    pub min :Vector3<f32>,
+    pub max :Vector3<f32>,
 
 }
 #[derive(Debug)]
@@ -32,15 +32,15 @@ pub trait BoundBox{
 }
 impl AABB{
     #[allow(dead_code)]
-    pub fn new(min :Point3<f32>,max:Point3<f32>)->Self{
-        Self { min: (min), max: (max) }
+    pub fn new(min :Vector3<f32>,max:Vector3<f32>)->Self{
+        Self { min: (min)-Vector3::new(0.02, 0.02,0.02), max: (max+Vector3::new(0.02, 0.02,0.02)) }
     }
     pub fn zero()->Self{
-        Self { min: (Point3::<f32>::origin()), max: (Point3::<f32>::origin()) }
+        Self { min: (Vector3::<f32>::zeros()), max: (Vector3::<f32>::zeros()) }
     }
     pub fn merge(&self,other :&AABB)->Self{
-        let min=Point3::<f32>::new(self.min.x.min(other.min.x),self.min.y.min(other.min.y),self.min.z.min(other.min.z));
-        let max=Point3::<f32>::new(self.max.x.max(other.max.x),self.max.y.max(other.max.y),self.max.z.max(other.max.z));
+        let min=Vector3::<f32>::new(self.min.x.min(other.min.x),self.min.y.min(other.min.y),self.min.z.min(other.min.z));
+        let max=Vector3::<f32>::new(self.max.x.max(other.max.x),self.max.y.max(other.max.y),self.max.z.max(other.max.z));
         Self{min,max}
     }
     #[allow(dead_code)]
@@ -51,16 +51,18 @@ impl AABB{
     pub fn hit(&self,ray :&Ray,t_min :f32,t_max:f32)->bool {
         let mut tmin=t_min;
         let mut tmax=t_max;
+        let mut t0=0.0;
+        let mut t1=0.0;
         for i in 0..3{
             let inv=1.0/ray.direction[i];
-            let mut t0=(self.min[i]-ray.origin[i])*inv;
-            let mut t1=(self.max[i]-ray.origin[i])*inv;
+            t0=(self.min[i]-ray.origin[i])*inv;
+            t1=(self.max[i]-ray.origin[i])*inv;
             if inv<0.0{
                 std::mem::swap(&mut t0,&mut t1);
             }
-            tmin = if t0<tmin{t0}else{tmin};
-            tmax = if t0<tmax{t1}else{tmax};
-            if tmax<=tmin{
+            tmin = t0.min(tmin);
+            tmax = t1.max(tmax);
+            if tmax<tmin||t0<0.0||t1<0.0{
                 return false
             }
         }
